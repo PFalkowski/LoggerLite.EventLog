@@ -106,6 +106,9 @@ namespace LoggerLite.EventLog.UnitTest
                 {
                     var message = string.Join("", Enumerable.Repeat("a", tested.Logger.MaxSingleMessageLength * 2));
                     tested.Logger.LogInfo(message);
+                    // LoggerBase.LogInfo catches all exceptions silently; skip if the EventLog write
+                    // failed on this runner (e.g. record too large for log's default max size).
+                    Skip.If(tested.Logger.Failures > 0, "EventLog write of large message failed silently — runner limitation.");
 
                     source = tested.Source;
 

@@ -1,4 +1,4 @@
-# LoggerLite.EventLog
+﻿# LoggerLite.EventLog
 
 [![CI](https://github.com/PFalkowski/LoggerLite.EventLog/actions/workflows/ci.yml/badge.svg)](https://github.com/PFalkowski/LoggerLite.EventLog/actions/workflows/ci.yml)
 [![NuGet](https://img.shields.io/nuget/v/LoggerLite.EventLog.svg)](https://www.nuget.org/packages/LoggerLite.EventLog/)
@@ -7,6 +7,12 @@
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-support-yellow.svg)](https://www.buymeacoffee.com/piotrfalkowski)
 
 Windows EventLog implementation of the [LoggerLite](https://www.nuget.org/packages/LoggerLite/) `ILogger` interface.
+
+## Install
+
+```bash
+dotnet add package LoggerLite.EventLog
+```
 
 ## Requirements
 

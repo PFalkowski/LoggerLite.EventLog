@@ -1,13 +1,13 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Security;
 using Extensions.Standard;
 
 namespace LoggerLite.EventLog
 {
-    public class EventLogLogger : ILogger
+    public class EventLogLogger : LoggerBase
     {
-        public const string TruncateInfo = "/truncated";
+        public new const string TruncateInfo = "/truncated";
 
         public EventLogLogger(string logSource, string logName)
         {
@@ -19,43 +19,34 @@ namespace LoggerLite.EventLog
 
         public string Source { get; set; }
         public string Name { get; }
-        public int MaxSingleMessageLength { get; }
 
-        public bool FlushAuto => true;
+        public override bool FlushAuto => true;
+        public override bool IsThreadSafe => true;
 
-        public void LogError(string error)
+        protected override void Log(string message, MessageSeverity severity)
         {
             EnsureSourceExists();
-            System.Diagnostics.EventLog.WriteEntry(Source, FormatMessage(error), EventLogEntryType.Error);
+            var eventType = severity switch
+            {
+                MessageSeverity.Warning => EventLogEntryType.Warning,
+                MessageSeverity.Error => EventLogEntryType.Error,
+                _ => EventLogEntryType.Information,
+            };
+            System.Diagnostics.EventLog.WriteEntry(Source, FormatMessage(message), eventType);
         }
 
-        public void LogError(Exception exception)
-        {
-            EnsureSourceExists();
-            System.Diagnostics.EventLog.WriteEntry(Source, FormatMessage(exception.ToString()), EventLogEntryType.Error);
-        }
-
-        public void LogInfo(string message)
-        {
-            EnsureSourceExists();
-            System.Diagnostics.EventLog.WriteEntry(Source, FormatMessage(message), EventLogEntryType.Information);
-        }
-
-        public void LogWarning(string warning)
-        {
-            EnsureSourceExists();
-            System.Diagnostics.EventLog.WriteEntry(Source, FormatMessage(warning), EventLogEntryType.Warning);
-        }
         public void LogAuditFailure(string failure)
         {
             EnsureSourceExists();
             System.Diagnostics.EventLog.WriteEntry(Source, FormatMessage(failure), EventLogEntryType.FailureAudit);
         }
+
         public void LogAuditSuccess(string success)
         {
             EnsureSourceExists();
             System.Diagnostics.EventLog.WriteEntry(Source, FormatMessage(success), EventLogEntryType.SuccessAudit);
         }
+
         private void EnsureSourceExists()
         {
             if (System.Diagnostics.EventLog.SourceExists(Name)) return;
@@ -73,8 +64,7 @@ namespace LoggerLite.EventLog
 
         protected internal string FormatMessage(string message)
         {
-            return
-                $"{(message.Length > MaxSingleMessageLength ? message.Truncate(MaxSingleMessageLength - TruncateInfo.Length) + TruncateInfo : message)}";
+            return $"{(message.Length > MaxSingleMessageLength ? message.Truncate(MaxSingleMessageLength - TruncateInfo.Length) + TruncateInfo : message)}";
         }
     }
 }

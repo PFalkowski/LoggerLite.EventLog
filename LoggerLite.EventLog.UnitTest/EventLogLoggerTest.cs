@@ -1,14 +1,13 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Security;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace LoggerLite.EventLog.UnitTest
 {
-    [TestClass]
     [ExcludeFromCodeCoverage]
     public class EventLogLoggerTest
     {
@@ -20,17 +19,16 @@ namespace LoggerLite.EventLog.UnitTest
 
             public TestObjectFactory(string name, string source)
             {
+                Name = name;
+                Source = source;
                 try
                 {
-                    Name = name;
-                    Source = source;
-
                     Logger = new EventLogLogger(Source, Name);
-
                 }
                 catch (Exception)
                 {
-                    Assert.Inconclusive("could not create tested object.");
+                    Logger = null!;
+                    Skip.If(true, "could not create tested object.");
                 }
             }
 
@@ -38,11 +36,9 @@ namespace LoggerLite.EventLog.UnitTest
             {
                 System.Diagnostics.EventLog.Delete(Name);
             }
-
         }
 
-
-        [TestMethod]
+        [SkippableFact]
         public void Create()
         {
             try
@@ -51,24 +47,23 @@ namespace LoggerLite.EventLog.UnitTest
                 var source = nameof(Create);
                 using (var tested = new TestObjectFactory(name, source))
                 {
-                    
-                    Assert.AreEqual(source, tested.Logger.Source);
-                    Assert.AreEqual(tested.Name, tested.Logger.Name);
-                    Assert.IsTrue(tested.Logger.MaxSingleMessageLength < 31839);
-                    Assert.IsTrue(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
-                    Assert.AreEqual(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
-                    Assert.AreEqual(0, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Count);
+                    Assert.Equal(source, tested.Logger.Source);
+                    Assert.Equal(tested.Name, tested.Logger.Name);
+                    Assert.True(tested.Logger.MaxSingleMessageLength < 31839);
+                    Assert.True(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
+                    Assert.Equal(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
+                    Assert.Equal(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
+                    Assert.Empty(System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>());
                 }
-                Assert.IsFalse(System.Diagnostics.EventLog.SourceExists(source));
+                Assert.False(System.Diagnostics.EventLog.SourceExists(source));
             }
             catch (Exception ex) when (ex is SecurityException || ex is UnauthorizedAccessException)
             {
-                Assert.Inconclusive($"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
+                Skip.If(true, $"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
             }
         }
 
-        [TestMethod]
+        [SkippableFact]
         public void LogError()
         {
             try
@@ -82,24 +77,25 @@ namespace LoggerLite.EventLog.UnitTest
 
                     source = tested.Source;
 
-                    Assert.AreEqual(tested.Source, tested.Logger.Source);
-                    Assert.AreEqual(tested.Name, tested.Logger.Name);
-                    Assert.IsTrue(tested.Logger.MaxSingleMessageLength < 31839);
-                    Assert.IsTrue(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
-                    Assert.AreEqual(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Count);
-                    Assert.AreEqual(message, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.Message);
-                    Assert.AreEqual(EventLogEntryType.Error, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.EntryType);
+                    Assert.Equal(tested.Source, tested.Logger.Source);
+                    Assert.Equal(tested.Name, tested.Logger.Name);
+                    Assert.True(tested.Logger.MaxSingleMessageLength < 31839);
+                    Assert.True(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
+                    Assert.Equal(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
+                    Assert.Equal(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
+                    var entry = Assert.Single(System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>());
+                    Assert.Equal(message, entry.Message);
+                    Assert.Equal(EventLogEntryType.Error, entry.EntryType);
                 }
-                Assert.IsFalse(System.Diagnostics.EventLog.SourceExists(source));
+                Assert.False(System.Diagnostics.EventLog.SourceExists(source));
             }
             catch (Exception ex) when (ex is SecurityException || ex is UnauthorizedAccessException)
             {
-                Assert.Inconclusive($"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
+                Skip.If(true, $"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
             }
         }
-        [TestMethod]
+
+        [SkippableFact]
         public void LogLargeInfoGetsTruncated()
         {
             try
@@ -113,26 +109,25 @@ namespace LoggerLite.EventLog.UnitTest
 
                     source = tested.Source;
 
-                    Assert.AreEqual(tested.Source, tested.Logger.Source);
-                    Assert.AreEqual(tested.Name, tested.Logger.Name);
-                    Assert.IsTrue(tested.Logger.MaxSingleMessageLength < 31839);
-                    Assert.IsTrue(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
-                    Assert.AreEqual(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Count);
-                    var messageActual = System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries
-                        .Cast<EventLogEntry>().FirstOrDefault()?.Message;
-                    Assert.IsTrue(messageActual.EndsWith(EventLogLogger.TruncateInfo));
-                    Assert.AreEqual(EventLogEntryType.Information, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.EntryType);
+                    Assert.Equal(tested.Source, tested.Logger.Source);
+                    Assert.Equal(tested.Name, tested.Logger.Name);
+                    Assert.True(tested.Logger.MaxSingleMessageLength < 31839);
+                    Assert.True(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
+                    Assert.Equal(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
+                    Assert.Equal(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
+                    var entry = Assert.Single(System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>());
+                    Assert.EndsWith(EventLogLogger.TruncateInfo, entry.Message);
+                    Assert.Equal(EventLogEntryType.Information, entry.EntryType);
                 }
-                Assert.IsFalse(System.Diagnostics.EventLog.SourceExists(source));
+                Assert.False(System.Diagnostics.EventLog.SourceExists(source));
             }
             catch (Exception ex) when (ex is SecurityException || ex is UnauthorizedAccessException)
             {
-                Assert.Inconclusive($"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
+                Skip.If(true, $"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
             }
         }
-        [TestMethod]
+
+        [SkippableFact]
         public void LogWarning()
         {
             try
@@ -146,55 +141,57 @@ namespace LoggerLite.EventLog.UnitTest
 
                     source = tested.Source;
 
-                    Assert.AreEqual(tested.Source, tested.Logger.Source);
-                    Assert.AreEqual(tested.Name, tested.Logger.Name);
-                    Assert.IsTrue(tested.Logger.MaxSingleMessageLength < 31839);
-                    Assert.IsTrue(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
-                    Assert.AreEqual(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Count);
-                    Assert.AreEqual(message, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.Message);
-                    Assert.AreEqual(EventLogEntryType.Warning, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.EntryType);
+                    Assert.Equal(tested.Source, tested.Logger.Source);
+                    Assert.Equal(tested.Name, tested.Logger.Name);
+                    Assert.True(tested.Logger.MaxSingleMessageLength < 31839);
+                    Assert.True(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
+                    Assert.Equal(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
+                    Assert.Equal(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
+                    var entry = Assert.Single(System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>());
+                    Assert.Equal(message, entry.Message);
+                    Assert.Equal(EventLogEntryType.Warning, entry.EntryType);
                 }
-                Assert.IsFalse(System.Diagnostics.EventLog.SourceExists(source));
+                Assert.False(System.Diagnostics.EventLog.SourceExists(source));
             }
             catch (Exception ex) when (ex is SecurityException || ex is UnauthorizedAccessException)
             {
-                Assert.Inconclusive($"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
+                Skip.If(true, $"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
             }
         }
-        [TestMethod]
-        public void LogAuditSucess()
+
+        [SkippableFact]
+        public void LogAuditSuccess()
         {
             try
             {
                 var source = Path.GetRandomFileName();
                 var name = Path.GetRandomFileName();
-                var message = "LogAuditSucess test";
+                var message = "LogAuditSuccess test";
                 using (var tested = new TestObjectFactory(name, source))
                 {
                     tested.Logger.LogAuditSuccess(message);
 
                     source = tested.Source;
 
-                    Assert.AreEqual(tested.Source, tested.Logger.Source);
-                    Assert.AreEqual(tested.Name, tested.Logger.Name);
-                    Assert.IsTrue(tested.Logger.MaxSingleMessageLength < 31839);
-                    Assert.IsTrue(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
-                    Assert.AreEqual(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Count);
-                    Assert.AreEqual(message, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.Message);
-                    Assert.AreEqual(EventLogEntryType.SuccessAudit, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.EntryType);
+                    Assert.Equal(tested.Source, tested.Logger.Source);
+                    Assert.Equal(tested.Name, tested.Logger.Name);
+                    Assert.True(tested.Logger.MaxSingleMessageLength < 31839);
+                    Assert.True(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
+                    Assert.Equal(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
+                    Assert.Equal(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
+                    var entry = Assert.Single(System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>());
+                    Assert.Equal(message, entry.Message);
+                    Assert.Equal(EventLogEntryType.SuccessAudit, entry.EntryType);
                 }
-                Assert.IsFalse(System.Diagnostics.EventLog.SourceExists(source));
+                Assert.False(System.Diagnostics.EventLog.SourceExists(source));
             }
             catch (Exception ex) when (ex is SecurityException || ex is UnauthorizedAccessException)
             {
-                Assert.Inconclusive($"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
+                Skip.If(true, $"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
             }
         }
-        [TestMethod]
+
+        [SkippableFact]
         public void LogAuditFailure()
         {
             try
@@ -208,21 +205,21 @@ namespace LoggerLite.EventLog.UnitTest
 
                     source = tested.Source;
 
-                    Assert.AreEqual(tested.Source, tested.Logger.Source);
-                    Assert.AreEqual(tested.Name, tested.Logger.Name);
-                    Assert.IsTrue(tested.Logger.MaxSingleMessageLength < 31839);
-                    Assert.IsTrue(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
-                    Assert.AreEqual(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
-                    Assert.AreEqual(1, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Count);
-                    Assert.AreEqual(message, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.Message);
-                    Assert.AreEqual(EventLogEntryType.FailureAudit, System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>().FirstOrDefault()?.EntryType);
+                    Assert.Equal(tested.Source, tested.Logger.Source);
+                    Assert.Equal(tested.Name, tested.Logger.Name);
+                    Assert.True(tested.Logger.MaxSingleMessageLength < 31839);
+                    Assert.True(System.Diagnostics.EventLog.SourceExists(tested.Logger.Source));
+                    Assert.Equal(System.Diagnostics.EventLog.LogNameFromSourceName(tested.Source, "."), tested.Name);
+                    Assert.Equal(1, System.Diagnostics.EventLog.GetEventLogs().Count(log => log.Log == name));
+                    var entry = Assert.Single(System.Diagnostics.EventLog.GetEventLogs().First(log => log.Log == name).Entries.Cast<EventLogEntry>());
+                    Assert.Equal(message, entry.Message);
+                    Assert.Equal(EventLogEntryType.FailureAudit, entry.EntryType);
                 }
-                Assert.IsFalse(System.Diagnostics.EventLog.SourceExists(source));
+                Assert.False(System.Diagnostics.EventLog.SourceExists(source));
             }
             catch (Exception ex) when (ex is SecurityException || ex is UnauthorizedAccessException)
             {
-                Assert.Inconclusive($"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
+                Skip.If(true, $"{ex.GetType().Name} {ex.Message} Run tests as administrator.");
             }
         }
     }
